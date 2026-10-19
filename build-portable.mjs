@@ -1,0 +1,17 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+const root=process.cwd();
+let html=await fs.readFile(path.join(root,'dist/index.html'),'utf8');
+const script=html.match(/<script[^>]*src="([^"]+)"[^>]*><\/script>/);
+const style=html.match(/<link[^>]*href="([^"]+\.css)"[^>]*>/);
+if(!script||!style)throw new Error('Missing build assets');
+const js=await fs.readFile(path.join(root,'dist',script[1]),'utf8');
+const css=(await fs.readFile(path.join(root,'dist',style[1]),'utf8')).replace(/@import[\s\S]*?(?=:root)/,'');
+const ref=await fs.readFile(path.join(root,'public/reference.png'));
+html=html.replace(script[0],()=>'<script type="module">'+js.replace(/<\/script/gi,'<\\/script')+'</script>');
+html=html.replace(style[0],()=>'<style>'+css+'</style>');
+html=html.replace(/(?:\.\/|\/)reference\.png/,'data:image/png;base64,'+ref.toString('base64'));
+const output=path.resolve(root,process.argv[2]||'../../outputs/潮汐之岛-360度海岛.html');
+await fs.mkdir(path.dirname(output),{recursive:true});
+await fs.writeFile(output,html);
+console.log(JSON.stringify({output,bytes:Buffer.byteLength(html),externalRuntimeImports:/<(?:script|link)[^>]+(?:src|href)="(?:\.\/|\/)assets\//.test(html)}));
