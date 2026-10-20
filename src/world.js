@@ -6,13 +6,14 @@ import { createHarbor } from './harbor.js';
 import { createWaterSystem } from './water.js';
 import { CAVE, carveCaveOpening, inCaveApproach } from './cave-layout.js';
 import { createNightLighting } from './night-lighting.js';
-import { terraceGeometry, coastShape, terraceHeightAt } from './terrain.js';
+import { terraceGeometry, coastShape, terraceShape, terraceHeightAt } from './terrain.js';
 import { createLifeDetails } from './life-details.js';
-import { TERRACES, HOUSES, GARDENS, PORT, REMOTE, BRIDGES, WALK_STAIRS } from './layout.js';
+import { TERRACES, HOUSES, GARDENS, PORT, REMOTE, BRIDGES, WALK_STAIRS, MARKET, MARKET_PATHS } from './layout.js';
 import { addSurfaceDetail } from './surface-detail.js';
 import { carveWalkways } from './stair-cut.js';
 import { createSeaIslets, SEA_STACKS } from './sea-islets.js';
 import { createLandscapeDetails } from './landscape-detail.js';
+import { stairBankGeometry } from './stair-banks.js';
 
 export function buildWorld(scene){
  const staticWorld=new THREE.Group();scene.add(staticWorld);
@@ -27,11 +28,12 @@ export function buildWorld(scene){
  function mesh(geo,material,x,y,z,sx=1,sy=1,sz=1){const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;o.receiveShadow=true;staticWorld.add(o);return o}
  function box(x,y,z,w,h,d,c){return mesh(boxGeo,mat(c),x,y,z,w,h,d)}
  function line(points,color,r=.035,parent=staticWorld){const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));const o=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,points.length*3),r,5,false),mat(color));parent.add(o);return o}
- const layers=[],groundSurfaces=[],cliffSurfaces=[];
+ const layers=[],groundSurfaces=[],cliffSurfaces=[],uncutSurfaces=[];
  const terrainMaterial=addSurfaceDetail(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}),'meadow');
  const cliffMaterial=addSurfaceDetail(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:true}),'cliff');
  function land(cx,cz,rx,rz,top,bottom,color=0x7e9f49,phase=0){
   const terrain=terraceGeometry(cx,cz,rx,rz,top,bottom,color,phase);
+  uncutSurfaces.push(new THREE.Mesh(terrain.top.clone(),terrainMaterial));
   const ground=carveWalkways(carveCaveOpening(terrain.top)),normals=ground.getAttribute('normal');
   for(let i=0;i<normals.count;i++)normals.setXYZ(i,0,1,0);
   groundSurfaces.push(mesh(ground,terrainMaterial,0,0,0));cliffSurfaces.push(mesh(carveWalkways(carveCaveOpening(terrain.cliff)),cliffMaterial,0,0,0));
@@ -59,30 +61,37 @@ export function buildWorld(scene){
  path([[-2.72,8.32,-5.2],[-1.65,8.32,-6.25],[.55,8.32,-6.25],[1.2,8.32,-5.9],[1.2,8.32,-4.05]],.34);
  // Paving stops at the actual terrace edge instead of floating beyond a disk.
  const paving=[],pavingColors=[];
- for(let x=-2.2;x<5.3;x+=.22)for(let z=2.65;z<6.7;z+=.22){
+ for(let x=-3.1;x<5.7;x+=.22)for(let z=3.4;z<7.0;z+=.22){
   const corners=[[x,z],[x+.22,z],[x,z+.22],[x+.22,z+.22]];
-  if(corners.some(([px,pz])=>heightAt(px,pz)!==1.75||((px-1.5)/3.65)**2+((pz-4.3)/2.4)**2>1))continue;
+  if(corners.some(([px,pz])=>heightAt(px,pz)!==1.75||nearStairs(px,pz,.13)||((px-1.35)/4.4)**2+((pz-4.95)/2.25)**2>1))continue;
   const c=new THREE.Color((Math.floor(x*7+z*9)%3)?0xd9c9a7:0xcdbd99);
   for(const k of [0,2,1,1,2,3]){paving.push(corners[k][0],1.795,corners[k][1]);pavingColors.push(c.r,c.g,c.b)}
  }
  const pavement=new THREE.BufferGeometry();pavement.setAttribute('position',new THREE.Float32BufferAttribute(paving,3));pavement.setAttribute('color',new THREE.Float32BufferAttribute(pavingColors,3));pavement.computeVertexNormals();mesh(pavement,terrainMaterial,0,0,0);
- path([[-5.5,.53,6.85],[-3.9,.53,6.95],[-1.5,.53,6.9],[1,.53,6.95],[3.4,.53,6.8],[5.1,.53,6.85]],.7);
+ path([[-5.5,.53,6.85],[-3.9,.53,6.95],[-1.5,.53,7.6],[1.1,.53,8.5],[3.4,.53,7.8],[5.1,.53,6.85]],.7);
  path([[-6.4,.53,6.6],[-5.95,.53,6.9],[-5.5,.53,6.85]],.4);
  path([[-3.45,1.81,4.90],[-3,1.81,4.98]],.34);
+ for(const route of MARKET_PATHS)path(route.points,route.width);
  // Every route has a carved corridor and a solid stone bed down to its lower bank.
  for(const {a,b,width,count,rail}of WALK_STAIRS){const run=Math.hypot(b[0]-a[0],b[2]-a[2]),heading=Math.atan2(b[0]-a[0],b[2]-a[2]);
   for(let i=0;i<count;i++){
    const t=i/(count-1),p=new THREE.Vector3(...a).lerp(new THREE.Vector3(...b),t),bottom=a[1]-.14;
-   box(p.x,(p.y+bottom)/2,p.z,width,p.y-bottom,run/(count-1)+.025,0xc8bea1).rotation.y=heading;
+   box(p.x,(p.y+bottom)/2,p.z,width+.20,p.y-bottom,run/(count-1)+.025,0xc8bea1).rotation.y=heading;
    // Thin, slightly projecting nosings distinguish the individual treads.
-   box(p.x,p.y+.018,p.z,width+.035,.036,run/(count-1)+.026,i%4===0?0xd5cbae:0xded3b6).rotation.y=heading;
+   box(p.x,p.y+.018,p.z,width+.20,.036,run/(count-1)+.026,i%4===0?0xd5cbae:0xded3b6).rotation.y=heading;
   }
   if(rail!==false)for(const side of[-1,1]){
    const lateral=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading)).multiplyScalar(side*(width/2+.035));
    for(let i=0;i<=6;i++){const t=i/6,p=new THREE.Vector3(...a).lerp(new THREE.Vector3(...b),t).add(lateral);box(p.x,p.y+.32,p.z,.055,.64,.055,0x936d45);}
    line([[a[0]+lateral.x,a[1]+.66,a[2]+lateral.z],[b[0]+lateral.x,b[1]+.66,b[2]+lateral.z]],0xb08a55,.035);
   }
+  // Close the over-cut lip behind the last tread with a supported landing.
+  const ux=(b[0]-a[0])/run,uz=(b[2]-a[2])/run;
+  box(b[0]+ux*.16,b[1]-.07,b[2]+uz*.16,width+.20,.16,.42,0xd5cbae).rotation.y=heading;
+  box(a[0]-ux*.11,a[1]-.07,a[2]-uz*.11,width+.20,.16,.40,0xd5cbae).rotation.y=heading;
  }
+ mesh(stairBankGeometry(uncutSurfaces,WALK_STAIRS),cliffMaterial,0,0,0);
+ uncutSurfaces.forEach(o=>o.geometry.dispose());
  path([[-2.2,8.32,-4.27],[-2.2,8.32,-4.5],[-1.8,8.32,-4.5]],.74);
  path([[-1.8,8.32,-4.5],[-1.3,8.32,-4.05],[-.4,8.32,-3.95],[.7,8.32,-4.05],[1.2,8.32,-4.05],[2.55,8.32,-3.95]],.40);
  // Water terraces, spilling streams and their animated white foam.
@@ -147,13 +156,23 @@ export function buildWorld(scene){
  {let points=[];for(let i=0;i<=64;i++){const a=.1+i/64*Math.PI*1.12,x=Math.cos(a)*3.25,z=-4.2+Math.sin(a)*2.7;if(nearStairs(x,z,.15)){if(points.length>1)line(points,0xb78e57,.025);points=[];}else points.push([x,8.76,z]);}if(points.length>1)line(points,0xb78e57,.025);}
  const mill=add(A.windmill(),-6.4,4.72,-3.7,.68);const rotor=mill.userData.rotor;if(rotor){rotor.updateWorldMatrix(true,false);const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();rotor.matrixWorld.decompose(p,q,s);rotor.removeFromParent();animated.add(rotor);rotor.position.copy(p);rotor.quaternion.copy(q);rotor.scale.copy(s)}
  const houses=HOUSES;
- for(const[x,y,z,s,r,col]of houses){const home=add(A.house({roofColor:col}),x,heightAt(x,z)+.04,z,s,r);add(D.flowerpot(),.9,0,1.25,.7,0,home);add(A.barrel(),-1.25,0,.55,.45,0,home);}
+ for(const[x,y,z,s,r,col]of houses){const home=add(A.house({roofColor:col}),x,heightAt(x,z)+.04,z,s,r);add(D.flowerpot(),.9,0,1.25,.7,0,home);const marketCottage=y===1.75&&x<0;add(A.barrel(),marketCottage ? .6 : -1.25,0,marketCottage ? -1.28 : .55,.45,0,home);}
  add(D.laundry(),-5.55,heightAt(-5.55,-2)+.04,-2,.82,-.12);
  add(D.laundry(),4.8,heightAt(4.8,-4.1)+.04,-4.1,.65,Math.PI/2);
  for(const[x,y,z,r]of[[-4.0,1.82,4.9,.2],[-5.8,3.49,2.85,-.4],[3.4,4.96,-.05,-.3],[-1.9,8.3,-5.5,.6]])add(D.signpost(),x,y,z,.7,r);
- add(A.fountain(),1.1,1.84,4.5,.67);
- const stalls=[[-.1,6.15,0xd66d48],[2.2,6.05,0xe3b242],[4.2,5.7,0x569c9a],[-1.5,5.55,0xc56d49]];
- for(const[x,z,c]of stalls)add(A.stall({color:c}),x,1.82,z,.68,x>2?-.2:.12);
+ add(A.fountain(),MARKET.fountain.x,1.80,MARKET.fountain.z,MARKET.fountain.scale);
+ const stalls=MARKET.stalls;
+ for(const p of stalls)add(A.stall({color:p.color}),p.x,heightAt(p.x,p.z)+.025,p.z,p.scale,p.rotation);
+ // A low, continuous parapet gives the plaza a deliberate edge. Its two
+ // stair openings remain generous instead of fencing off the entrances.
+ {const l=layers[1];let previous=null;
+  for(let i=0;i<=80;i++){
+   const a=.91+i/80*1.35,r=terraceShape(l,a)-.045,x=l.cx+Math.cos(a)*l.rx*r,z=l.cz+Math.sin(a)*l.rz*r;
+   if(heightAt(x,z)!==1.75||nearStairs(x,z,.23)){previous=null;continue;}
+   if(previous){const dx=x-previous[0],dz=z-previous[1],length=Math.hypot(dx,dz);box((x+previous[0])/2,1.89,(z+previous[1])/2,.13,.30,length+.015,0xb9b396).rotation.y=Math.atan2(dx,dz);box((x+previous[0])/2,2.06,(z+previous[1])/2,.18,.055,length+.02,0xd4c8a8).rotation.y=Math.atan2(dx,dz);}
+   previous=[x,z];
+  }
+ }
  // Cobblestones are scattered in the market plaza rather than a painted texture.
  for(let i=0;i<170;i++){let x=-1.7+rnd()*7,z=2.9+rnd()*3.7;if(heightAt(x,z)!==1.75||((x-1.4)/3.7)**2+((z-4.4)/2.6)**2>1)continue;const o=mesh(new THREE.CylinderGeometry(.09,.11,.025,5),mat([0xc8b998,0xe4d6b7,0xc1b699][i%3]),x,1.82,z,1,1,.8);o.rotation.y=rnd()*6.28}
  // Farm, orchard and kitchen garden.
@@ -209,7 +228,7 @@ export function buildWorld(scene){
  for(const l of layers.slice(1,TERRACES.length))for(let i=0;i<36;i++){
   const sample=Math.sin(i*91.7+l.top*13.8)*43758.5453,scatter=sample-Math.floor(sample);
   if(scatter<.38)continue;
-  const a=i/36*Math.PI*2+.07*Math.sin(i*2.4+l.phase),r=coastShape(a,l.phase);
+  const a=i/36*Math.PI*2+.07*Math.sin(i*2.4+l.phase),r=terraceShape(l,a);
   const x=l.cx+Math.cos(a)*l.rx*r,z=l.cz+Math.sin(a)*l.rz*r;
   const nx=Math.cos(a),nz=Math.sin(a),ground=heightAt(x+nx*.6,z+nz*.6);
   if(ground>=l.top-.4||inCaveApproach(x,ground,z,.6)||nearStairs(x,z,.4)||(Math.abs(x-1)<1.45&&z>-2.5&&z<3.4))continue;
@@ -235,9 +254,9 @@ export function buildWorld(scene){
  }
  for(let i=0;i<11;i++){const a=.18+i/10*Math.PI*1.02,x=Math.cos(a)*3.18,z=-4.2+Math.sin(a)*2.62;if(!nearStairs(x,z,.16))add(A.lamp(),x,8.28,z,.27);}
  // Beach objects, lanterns, small residents and flying gulls reward closer inspection.
- for(const[x,y,z]of[[-4.6,.53,6],[.1,1.8,5.5],[4.2,1.8,4.4],[5.1,.7,8.2],[5.1,.7,11.3],[3.4,.7,12],[-5.35,.7,10],[4.1,5,.25],[-1.55,8.3,-2.35]])add(A.lamp(),x,y,z,.6);
- for(let i=0,count=0;i<120&&count<20;i++){const x=-2+rnd()*7,z=3.4+rnd()*2.9;
-  if(heightAt(x,z)!==1.75||houses.some(h=>Math.hypot(h[0]-x,h[2]-z)<h[3]*1.65)||stalls.some(s=>Math.hypot(s[0]-x,s[1]-z)<.65))continue;
+ for(const[x,y,z]of[[-4.6,.53,6],[1.95,1.8,6.65],[3.85,1.8,5.15],[5.1,.7,8.2],[5.1,.7,11.3],[3.4,.7,12],[-5.35,.7,10],[4.1,5,.25],[-1.55,8.3,-2.35]])add(A.lamp(),x,y,z,.6);
+ for(let i=0,count=0;i<160&&count<14;i++){const x=-2+rnd()*7,z=3.4+rnd()*2.9;
+  if(heightAt(x,z)!==1.75||Array.from({length:8},(_,j)=>j*Math.PI/4).some(a=>heightAt(x+Math.cos(a)*.65,z+Math.sin(a)*.65)!==1.75)||nearStairs(x,z,.25)||nearPath(x,z,.15)||Math.hypot(x-MARKET.fountain.x,z-MARKET.fountain.z)<1.0||Math.abs(x-1)<1.6&&z<3.8||houses.some(h=>Math.hypot(h[0]-x,h[2]-z)<h[3]*1.8)||stalls.some(s=>Math.hypot(s.x-x,s.z-z)<.85))continue;
   add(H.person({color:[0xe4ae55,0x578f99,0xd47355,0xede8d0][i%4]}),x,1.84,z,.85,rnd()*6.28);count++;
  }
  for(let i=0;i<5;i++)add(H.person({color:0xe4bf6c}),5.0,.79,8.4+i*.65,.8,rnd()*6.28);

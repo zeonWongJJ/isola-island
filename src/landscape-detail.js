@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { TERRACES, HOUSES, GARDENS, BRIDGES, WALK_STAIRS } from './layout.js';
 import { inCaveApproach } from './cave-layout.js';
-import { coastShape, terraceHeightAt, terraceSurfacePoint } from './terrain.js';
+import { terraceShape, terraceHeightAt, terraceSurfacePoint } from './terrain.js';
 import { addSurfaceDetail } from './surface-detail.js';
 
 // All dressing is sampled against the carved terrain, not an ideal flat disk.
@@ -130,7 +130,7 @@ export function createLandscapeDetails({surfaces,cliffs,paths}){
   }
   // Small, irregular mats of groundcover are rooted back from the cliff lip.
   if(k%3)continue;
-  const radius=coastShape(angle,l.phase)-.055,x=l.cx+Math.cos(angle)*l.rx*radius,z=l.cz+Math.sin(angle)*l.rz*radius;
+  const radius=terraceShape(l,angle)-.055,x=l.cx+Math.cos(angle)*l.rx*radius,z=l.cz+Math.sin(angle)*l.rz*radius;
   if(terraceHeightAt(x,z,layers)!==l.top||!clear(x,z,l.top,.23))continue;
   patch(x,z,l.top,.28+random()*.16,.17+random()*.12,0x829257,'leaf',.010,angle);
   tuft(x,z,l.top,.18+random()*.08);pebble(x+.10,z+.07,l.top,.06+random()*.04);

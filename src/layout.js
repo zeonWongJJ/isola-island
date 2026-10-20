@@ -23,6 +23,7 @@ export const BRIDGES=[
 export const SUMMIT_STAIR=Object.freeze({a:[-2.2,4.96,-.65],b:[-2.2,8.32,-4.1],width:1.02,count:24});
 export const WALK_STAIRS=[
  {id:'beach',a:[-3.45,.60,7.05],b:[-3.45,1.81,5.1],width:1.65,count:13,rail:false},
+ {id:'market-entry',a:[1.1,.60,8.35],b:[1.1,1.81,6.9],width:1.1,count:12},
  {id:'farm',a:[-3,1.81,4.9],b:[-3,3.51,3.2],width:1.12,count:13},
  {id:'village',a:[3.55,1.81,4.15],b:[3.55,4.96,1.65],width:.90,count:23},
  {id:'upland',a:[-3.45,3.51,.25],b:[-3.7,4.96,-1.65],width:.60,count:14},
@@ -37,8 +38,8 @@ export const WALK_STAIRS=[
 export const HOUSES=[
  [-5.1,3.45,-.4,.64,-.52,0xc97830],
  [-7.0,3.45,.15,.53,.63,0xe1a03d],
- [-1.2,1.75,4.5,.72,.43,0xce6b2d],
- [5.15,1.75,3.2,.68,-.35,0xdf8736],
+ [-1.3,1.75,4.65,.64,Math.PI/2,0xce6b2d],
+ [5.35,1.75,2.75,.68,0,0xdf8736],
  [6.2,1.75,1.15,.60,-.97,0x548a9c],
  [-2.2,3.45,1.8,.53,-.40,0x45849b],
  [3.95,4.9,-1.4,.57,-.38,0xdd8d37],
@@ -51,6 +52,23 @@ export const HOUSES=[
 export const GARDENS=[
  {x:-4.85,y:3.49,z:1.85,scale:1,width:2.25,depth:1.7,seed:3},
  {x:-7,y:3.49,z:1.8,scale:.85,width:1.6,depth:1.4,seed:8},
+];
+
+export const MARKET=Object.freeze({fountain:{x:1.1,z:4.95,scale:.55},stalls:[
+ {x:-.4,z:6.15,scale:.58,rotation:Math.PI,color:0xd66d48},
+ {x:3.05,z:5.7,scale:.54,rotation:-Math.PI/2,color:0xe3b242},
+ {x:4.85,z:4.7,scale:.58,rotation:-Math.PI/2,color:0x569c9a},
+]});
+
+// Shared routes let ground dressing, planting and clearance checks agree.
+export const MARKET_PATHS=[
+ {id:'market-entry',width:.72,points:[[1.1,1.81,6.72],[1.1,1.81,6.1]]},
+ {id:'fountain-loop',width:.42,points:[[1.1,1.81,6.1],[0,1.81,5.55],[-.05,1.81,4.95],[0,1.81,4.1],[.35,1.81,3.95],[1.9,1.81,3.95],[2.25,1.81,4.15],[2.3,1.81,4.95],[2.2,1.81,5.85],[1.1,1.81,6.1]]},
+ {id:'west-entry',width:.34,points:[[-3.45,1.81,5.09],[-2.3,1.81,5.09],[-2.3,1.81,5.60],[-1.6,1.81,5.60],[0,1.81,5.55]]},
+ {id:'west-door',width:.30,points:[[-.37,1.81,4.96],[-.05,1.81,4.96]]},
+ {id:'east-door',width:.34,points:[[5.02,1.81,3.97],[4.3,1.81,3.97],[4.3,1.81,4.45],[3.55,1.81,4.45],[2.3,1.81,4.95]]},
+ {id:'village-landing',width:.50,points:[[3.55,1.81,4.35],[3.55,1.81,4.45]]},
+ {id:'east-stall',width:.34,points:[[3.55,1.81,4.45],[4.3,1.81,4.45],[4.3,1.81,4.7],[4.43,1.81,4.7]]},
 ];
 
 export const PORT=Object.freeze({

@@ -10,16 +10,20 @@ export const coastShapeGLSL=`
 float coastBump(float a,float c,float w){return exp(-pow(atan(sin(a-c),cos(a-c))/w,2.));}
 float coastShape(float a,float p){float base=1.+.055*sin(a*5.+p)+.04*sin(a*9.+p)+.014*sin(a*17.+p*2.)+.055*sin(a*3.+p*.7)+.025*cos(a*2.-p);return abs(p-.4)<.001?base-.105*coastBump(a,1.95,.34)+.09*coastBump(a,2.72,.3):base;}`;
 
+// A broader southern shoulder supports the market's setback and public entry.
+// Modify the existing continuous terrace rather than overlaying another disk.
+export const terraceShape=(l,a)=>coastShape(a,l.phase)+(l.top===1.75?.14*bump(a,1.35,.8)*(1-THREE.MathUtils.smoothstep(a,1.85,2.03)):0);
+
 export function terraceHeightAt(x,z,layers){
  let y=-.3;
- for(const l of layers){const dx=(x-l.cx)/l.rx,dz=(z-l.cz)/l.rz;if(Math.hypot(dx,dz)<coastShape(Math.atan2(dz,dx),l.phase)-.015)y=Math.max(y,l.top)}
+ for(const l of layers){const dx=(x-l.cx)/l.rx,dz=(z-l.cz)/l.rz;if(Math.hypot(dx,dz)<terraceShape(l,Math.atan2(dz,dx))-.015)y=Math.max(y,l.top)}
  return y;
 }
 
 export function terraceSurfacePoint({cx,cz,rx,rz,top,bottom,phase},a,t){
  const j=t*7,shift=Math.sin(a*11+j*1.7+phase)*.012*Math.sin(t*Math.PI),angle=a+shift;
  const erosion=(.035*Math.sin(a*7+j*1.1+phase)+.022*Math.sin(a*19-j*.7))*Math.sin(t*Math.PI);
- const radius=coastShape(a,phase)*(1+.055*(1-t)+erosion);
+ const radius=terraceShape({top,phase},a)*(1+.055*(1-t)+erosion);
  return[cx+Math.cos(angle)*rx*radius,bottom+(top-bottom)*t+Math.sin(a*6+j*1.8+phase)*.11*Math.sin(t*Math.PI)+.065*Math.sin(a*19+phase)*t,cz+Math.sin(angle)*rz*radius];
 }
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { buildWorld } from '../src/world.js';
-import { WALK_STAIRS,TERRACES } from '../src/layout.js';
+import { WALK_STAIRS,TERRACES,SUMMIT_STAIR } from '../src/layout.js';
 import { terraceHeightAt } from '../src/terrain.js';
 
 test('every stair route remains clear and walking paths stay supported',()=>{
@@ -25,5 +25,15 @@ test('every stair route remains clear and walking paths stay supported',()=>{
    const p=a.clone().lerp(b,k/12).addScaledVector(side,width*s),ground=terraceHeightAt(p.x,p.z,layers);
    assert.ok(Math.abs(p.y-ground)<.18,`Walking path at ${p.toArray()} floats over a cliff or is buried`);
   }
+ }
+ // Sideways rays must hit the return faces of the summit cut, rather than
+ // seeing through a missing portion of the cliff to the far side of the island.
+ for(const side of[-1,1]){
+  const hit=new THREE.Raycaster(new THREE.Vector3(-2.2,8.20,-3.25),new THREE.Vector3(side,0,0),0,1.1).intersectObjects(meshes,false)[0];
+  assert.ok(hit&&Math.abs(hit.distance-(SUMMIT_STAIR.width/2+.10))<.025,'Summit stair cut has an unsealed side wall');
+ }
+ for(const dx of[-.32,0,.32]){
+  const hit=new THREE.Raycaster(new THREE.Vector3(-2.2+dx,9.1,-4.28),new THREE.Vector3(0,-1,0),0,1).intersectObjects(meshes,false)[0];
+  assert.ok(hit&&Math.abs(hit.point.y-8.33)<.06,'The last summit tread must join a solid upper landing');
  }
 });

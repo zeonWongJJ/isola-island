@@ -17,7 +17,7 @@ const places=[
  {name:'瀑布与湖泊',en:'THE CASCADES',icon:'waves',pos:[1,5.7,.8],look:[.9,5.5,-.5],offset:[7,7.5,14],desc:'山泉从高处落入两层碧蓝水潭。木桥跨过水道，桥头的石台阶接入山间步道，水花与涟漪在桥下流动。'},
  {name:'海岛居民区',en:'THE VILLAGE',icon:'house',pos:[4.1,4.3,3.7],look:[2.5,2.7,3.8],offset:[7,4,10],desc:'橙色瓦顶与蓝色屋顶错落相间。木梁、百叶窗、烟囱、门廊和窗台花箱，藏着小镇的日常。'},
  {name:'农场与果园',en:'THE ORCHARD',icon:'wheat',pos:[-5,4.2,2],look:[-5.3,4,1],offset:[-7,5,9],desc:'沿木栅栏走进整齐的菜畦，果树上结着小小的果实。山坡风车缓缓转动，花丛点缀田间小径。'},
- {name:'市集广场',en:'THE MARKET',icon:'store',pos:[1,3.5,4.6],look:[1.2,2.6,4.5],offset:[3,5,10],desc:'石板广场中央是一座小喷泉。彩色遮篷下摆着货摊，木桶、货箱与来往岛民让集市热闹起来。'},
+ {name:'市集广场',en:'THE MARKET',icon:'store',pos:[1.1,3.5,4.95],look:[1.2,2.45,5.2],offset:[3,5,10],desc:'从沙滩石阶走进市集，绕过喷泉便可抵达两侧住宅。彩色摊位沿步道退让布置，低矮石栏围出临海广场。'},
  {name:'帆船与港口',en:'THE HARBOUR',icon:'anchor',pos:[PORT.ship.x,5.2,PORT.ship.z],look:[6.4,2.3,11.8],offset:[9,5,11],desc:'三桅帆船停靠伸入海湾的木码头。风帆、缆绳、桅杆、船舷与甲板层次分明，小舟随海浪轻轻起伏。'},
  {name:'沙滩营地',en:'THE BEACH',icon:'umbrella',pos:[PORT.umbrella.x,2.3,PORT.umbrella.z],look:[-4.8,1.2,7.8],offset:[-4,4,10],desc:'棕榈树沿着弯曲的浅色海岸伸展，条纹阳伞与小栈桥散落沙滩。放慢一点，看浪花围着礁石荡开。'},
  {name:'神秘洞穴',en:'THE BLUE GROTTO',icon:'gem',pos:[CAVE.x+.25,3.65,CAVE.z],look:[8.45,1.75,CAVE.z],offset:[8.4,1.65,1.5],desc:'东侧崖壁中藏着一片幽蓝。岩洞里生长着发光晶体，木栈桥通向水边，星夜时更显神秘。'},
