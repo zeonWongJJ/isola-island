@@ -4,6 +4,13 @@ float sdHash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.
 float sdNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(sdHash(i),sdHash(i+vec3(1,0,0)),f.x),mix(sdHash(i+vec3(0,1,0)),sdHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(sdHash(i+vec3(0,0,1)),sdHash(i+vec3(1,0,1)),f.x),mix(sdHash(i+vec3(0,1,1)),sdHash(i+vec3(1,1,1)),f.x),f.y),f.z);}
 `;
 const pigments={
+ meadow:`
+  float grassy=step(diffuseColor.r*1.06,diffuseColor.g);
+  float soil=sdNoise(sp*vec3(.85,.2,.85)),grain=sdNoise(sp*12.);
+  diffuseColor.rgb*=1.-grassy*(.07-soil*.12);
+  diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.10,1.015,.87),grassy*smoothstep(.48,.72,soil)*.5);
+  diffuseColor.rgb*=.98+grain*.035;
+ `,
  foliage:`
   float pigmentCloud=sdNoise(sp*5.5),leaf=sdNoise(sp*vec3(17.,12.,17.));
   diffuseColor.rgb*=.91+pigmentCloud*.16;
@@ -38,6 +45,15 @@ const pigments={
   diffuseColor.rgb*=mix(vec3(.98,.96,.94),vec3(1.02,1.015,.98),pigment);
  `,
 };
+
+pigments.cliff=pigments.limestone+`
+ float bedding=sdNoise(vec3(sp.x*.52,sp.y*5.2,sp.z*.52));
+ float bedEdge=smoothstep(.47,.57,bedding)*(1.-smoothstep(.60,.76,bedding));
+ float upright=1.-smoothstep(.25,.75,abs(sn.y));
+ diffuseColor.rgb*=1.-upright*bedEdge*.17;
+ float weather=sdNoise(sp*vec3(2.6,.38,2.6));
+ diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.78,.89,.85),upright*smoothstep(.58,.78,weather)*.30);
+`;
 
 export function addSurfaceDetail(material,kind){
  if(!pigments[kind])throw new Error('Unknown island surface: '+kind);

@@ -12,6 +12,7 @@ import { TERRACES, HOUSES, GARDENS, PORT, REMOTE, BRIDGES, WALK_STAIRS } from '.
 import { addSurfaceDetail } from './surface-detail.js';
 import { carveWalkways } from './stair-cut.js';
 import { createSeaIslets, SEA_STACKS } from './sea-islets.js';
+import { createLandscapeDetails } from './landscape-detail.js';
 
 export function buildWorld(scene){
  const staticWorld=new THREE.Group();scene.add(staticWorld);
@@ -26,12 +27,14 @@ export function buildWorld(scene){
  function mesh(geo,material,x,y,z,sx=1,sy=1,sz=1){const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;o.receiveShadow=true;staticWorld.add(o);return o}
  function box(x,y,z,w,h,d,c){return mesh(boxGeo,mat(c),x,y,z,w,h,d)}
  function line(points,color,r=.035,parent=staticWorld){const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));const o=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,points.length*3),r,5,false),mat(color));parent.add(o);return o}
- const layers=[];
- const terrainMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:true});
- const cliffMaterial=addSurfaceDetail(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:true}),'limestone');
+ const layers=[],groundSurfaces=[],cliffSurfaces=[];
+ const terrainMaterial=addSurfaceDetail(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}),'meadow');
+ const cliffMaterial=addSurfaceDetail(new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:true}),'cliff');
  function land(cx,cz,rx,rz,top,bottom,color=0x7e9f49,phase=0){
   const terrain=terraceGeometry(cx,cz,rx,rz,top,bottom,color,phase);
-  mesh(carveWalkways(carveCaveOpening(terrain.top)),terrainMaterial,0,0,0);mesh(carveWalkways(carveCaveOpening(terrain.cliff)),cliffMaterial,0,0,0);
+  const ground=carveWalkways(carveCaveOpening(terrain.top)),normals=ground.getAttribute('normal');
+  for(let i=0;i<normals.count;i++)normals.setXYZ(i,0,1,0);
+  groundSurfaces.push(mesh(ground,terrainMaterial,0,0,0));cliffSurfaces.push(mesh(carveWalkways(carveCaveOpening(terrain.cliff)),cliffMaterial,0,0,0));
   layers.push({cx,cz,rx,rz,top,bottom,phase});return terrain.edge;
  }
  function disc(x,y,z,rx,rz,c){const o=mesh(new THREE.CircleGeometry(1,64),mat(c),x,y,z,rx,rz,1);o.rotation.x=-Math.PI/2;return o}
@@ -46,7 +49,7 @@ export function buildWorld(scene){
  const nearStairs=(x,z,padding=.25)=>stairRoutes.some(([ax,az,bx,bz,width])=>{const dx=bx-ax,dz=bz-az,t=THREE.MathUtils.clamp(((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(x-ax-t*dx,z-az-t*dz)<width/2+padding});
  // Pale walking paths and individual stepping stones bind the inhabited terraces.
  const walkPaths=[];
- function path(points,width=.5){walkPaths.push({points,width});for(let j=0;j<points.length-1;j++){const a=new THREE.Vector3(...points[j]),b=new THREE.Vector3(...points[j+1]),len=a.distanceTo(b);const count=Math.ceil(len/.28);for(let k=0;k<count;k++){const p=a.clone().lerp(b,k/count);box(p.x,p.y+.025,p.z,width,.055,.32,0xd7c49c).rotation.y=Math.atan2(b.x-a.x,b.z-a.z)}}}
+ function path(points,width=.5){walkPaths.push({points,width});}
  const nearPath=(x,z,padding=.25)=>walkPaths.some(({points,width})=>points.slice(1).some((b,i)=>{const a=points[i],dx=b[0]-a[0],dz=b[2]-a[2],t=THREE.MathUtils.clamp(((x-a[0])*dx+(z-a[2])*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(x-a[0]-dx*t,z-a[2]-dz*t)<width/2+padding}));
  function steps(a,b,width=1.4,n=14){const heading=Math.atan2(b[0]-a[0],b[2]-a[2]);for(let i=0;i<n;i++){const p=new THREE.Vector3(...a).lerp(new THREE.Vector3(...b),i/(n-1));box(p.x,p.y-.12,p.z,width,.25,.32,0xcabf9e).rotation.y=heading}}
  path([[-3,3.51,3.04],[-3.4,3.51,3.04],[-3.4,3.51,.6],[-3.5,3.51,.15]],.34);
@@ -240,6 +243,7 @@ export function buildWorld(scene){
  for(let i=0;i<5;i++)add(H.person({color:0xe4bf6c}),5.0,.79,8.4+i*.65,.8,rnd()*6.28);
  const birds=[];for(let i=0;i<9;i++){const b=H.seagull();animated.add(b);birds.push(b)}
  const fireflies=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(Array.from({length:240},(_,i)=>i%3===1?1+rnd()*9:(rnd()-.5)*22),3)),new THREE.PointsMaterial({color:0xffd98a,size:.065,transparent:true,opacity:0}));animated.add(fireflies);
+ const landscape=createLandscapeDetails({surfaces:groundSurfaces,cliffs:cliffSurfaces,paths:walkPaths});staticWorld.add(landscape.group);
  const nightLighting=createNightLighting(scene,[staticWorld,animated]);
  const waterSystem=createWaterSystem(scene,{seaStacks});const seaMat=waterSystem.material;
  waterSystem.setHarborLights(nightLighting.reflections);

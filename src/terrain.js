@@ -16,23 +16,22 @@ export function terraceHeightAt(x,z,layers){
  return y;
 }
 
+export function terraceSurfacePoint({cx,cz,rx,rz,top,bottom,phase},a,t){
+ const j=t*7,shift=Math.sin(a*11+j*1.7+phase)*.012*Math.sin(t*Math.PI),angle=a+shift;
+ const erosion=(.035*Math.sin(a*7+j*1.1+phase)+.022*Math.sin(a*19-j*.7))*Math.sin(t*Math.PI);
+ const radius=coastShape(a,phase)*(1+.055*(1-t)+erosion);
+ return[cx+Math.cos(angle)*rx*radius,bottom+(top-bottom)*t+Math.sin(a*6+j*1.8+phase)*.11*Math.sin(t*Math.PI)+.065*Math.sin(a*19+phase)*t,cz+Math.sin(angle)*rz*radius];
+}
+
 export function terraceGeometry(cx,cz,rx,rz,top,bottom,color,phase){
  const segments=96,bands=7,edge=[],tp=[],tc=[],cp=[],cc=[];
  const topColor=new THREE.Color(color),warm=new THREE.Color(0xb8b4a0),cool=new THREE.Color(0x8b9892);
  const hash=(i,j)=>{const n=Math.sin(i*127.1+j*311.7+phase*71.3)*43758.5453;return n-Math.floor(n)};
- const point=(i,j)=>{
-  const a=i/segments*Math.PI*2,t=j/bands;
-  const shift=Math.sin(a*11+j*1.7+phase)*.012*Math.sin(t*Math.PI);
-  const angle=a+shift;
-  const erosion=(.035*Math.sin(a*7+j*1.1+phase)+.022*Math.sin(a*19-j*.7))*Math.sin(t*Math.PI);
-  const radius=coastShape(a,phase)*(1+.055*(1-t)+erosion);
-  const uneven=Math.sin(a*6+j*1.8+phase)*.11*Math.sin(t*Math.PI);
-  return[cx+Math.cos(angle)*rx*radius,bottom+(top-bottom)*t+uneven+.065*Math.sin(a*19+phase)*t,cz+Math.sin(angle)*rz*radius];
- };
+ const point=(i,j)=>terraceSurfacePoint({cx,cz,rx,rz,top,bottom,phase},i/segments*Math.PI*2,j/bands);
  const push=(positions,colors,vertices,c)=>{for(const p of vertices){positions.push(...p);colors.push(c.r,c.g,c.b)}};
  for(let i=0;i<segments;i++){
   const a=point(i,bands),b=point(i+1,bands);edge.push([a[0],a[2]]);
-  push(tp,tc,[[cx,top+.03,cz],b,a],topColor.clone().multiplyScalar(.96+hash(i,0)*.07));
+  push(tp,tc,[[cx,top+.03,cz],b,a],topColor);
   for(let j=0;j<bands;j++){
    const a=point(i,j),b=point(i+1,j),c=point(i,j+1),d=point(i+1,j+1);
    // Adjacent facets share a geological palette; seams step across the rock
@@ -44,5 +43,9 @@ export function terraceGeometry(cx,cz,rx,rz,top,bottom,color,phase){
   }
  }
  function geometry(pos,col){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.computeVertexNormals();return g}
- return{top:geometry(tp,tc),cliff:geometry(cp,cc),edge};
+ const grass=geometry(tp,tc),normals=grass.getAttribute('normal');
+ // Grass receives a continuous light field. Flat fan normals made every
+ // summit clearing look like a radial striped disk under the low sun.
+ for(let i=0;i<normals.count;i++)normals.setXYZ(i,0,1,0);
+ return{top:grass,cliff:geometry(cp,cc),edge};
 }
