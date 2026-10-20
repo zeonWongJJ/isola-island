@@ -265,7 +265,6 @@ export function buildWorld(scene){
  const landscape=createLandscapeDetails({surfaces:groundSurfaces,cliffs:cliffSurfaces,paths:walkPaths});staticWorld.add(landscape.group);
  const nightLighting=createNightLighting(scene,[staticWorld,animated]);
  const waterSystem=createWaterSystem(scene,{seaStacks});const seaMat=waterSystem.material;
- waterSystem.setHarborLights(nightLighting.reflections);
  // Merge static geometry by material to preserve thousands of model details with a compact draw-call budget.
  staticWorld.updateMatrixWorld(true);const buckets=new Map(),glowMats=new Set();let meshes=0;
  const geometryTemplates=new Map(),coloredMaterials=new Map();

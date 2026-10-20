@@ -33,14 +33,7 @@ export function createNightLighting(scene,roots){
  const cascadeLight=new THREE.PointLight(0x32bde7,0,7.5,2);cascadeLight.position.set(1.5,3.9,2.2);cascadeLight.visible=false;cascadeLight.name='Blue waterfall glow';scene.add(cascadeLight);
  const direction=new THREE.Vector3(),normal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
  for(const s of sources)s.world.copy(s.local).applyMatrix4(s.node.matrixWorld);
- const reflectionSources=[];
- for(const s of sources){
-  if(s.kind!=='lantern'||s.world.z<6||s.world.y>3.8)continue;
-  if(reflectionSources.some(other=>Math.hypot(other.world.x-s.world.x,other.world.z-s.world.z)<.55))continue;
-  reflectionSources.push(s);if(reflectionSources.length===20)break;
- }
- const reflections=Array.from({length:20},()=>new THREE.Vector4(0,0,0,0));
- return {sources,layer,lights,reflections,
+ return {sources,layer,lights,
   update(t,night,camera){
    // Twilight starts the lanterns gently; full night retains dark, cool unlit rock.
    const level=THREE.MathUtils.smoothstep(night,.025,.85);layer.visible=level>.001;
@@ -55,8 +48,5 @@ export function createNightLighting(scene,roots){
    }
    lights.forEach(({light,power},i)=>{light.visible=level>.001;light.intensity=power*level*(.98+Math.sin(t*.8+i)*.02)});
    cascadeLight.visible=level>.001;cascadeLight.intensity=level*5;
-   for(let i=0;i<reflections.length;i++){
-    const s=reflectionSources[i];if(s)reflections[i].set(s.world.x,s.world.y,s.world.z,Math.min(1.4,s.size)*level);else reflections[i].w=0;
-   }
   }};
 }

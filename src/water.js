@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { coastShape, coastShapeGLSL } from './terrain.js';
 import { REMOTE } from './layout.js';
 
@@ -12,11 +13,13 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
  const time={value:0},night={value:0};
  const deep={value:new THREE.Color(0x469eab)};
  const shoreData=[new THREE.Vector4(0,1,12.32,10.01),new THREE.Vector4(REMOTE.x,REMOTE.z,REMOTE.rx*1.1,REMOTE.rz*1.1),...seaStacks.map(([x,z,s])=>new THREE.Vector4(x,z,s*1.05,s*.94))];
- const material=new THREE.ShaderMaterial({
-  uniforms:{uTime:time,uNight:night,uDeep:deep,uDusk:{value:0},uSkyTint:{value:new THREE.Color(0xc1e3e1)},uLightDirection:{value:new THREE.Vector3(-.53,.026,-.848).normalize()},uHarborLights:{value:Array.from({length:20},()=>new THREE.Vector4())},uShores:{value:shoreData}},
-  vertexShader:`varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+ const resolution=768;
+ const shader={name:'Island ocean with scene reflections',
+  uniforms:{color:{value:null},tDiffuse:{value:null},textureMatrix:{value:new THREE.Matrix4()},uReflectionTexel:{value:new THREE.Vector2(1/resolution,1/resolution)},uTime:time,uNight:night,uDeep:deep,uDusk:{value:0},uSkyTint:{value:new THREE.Color(0xc1e3e1)},uLightDirection:{value:new THREE.Vector3(-.53,.026,-.848).normalize()},uShores:{value:shoreData}},
+  vertexShader:`uniform mat4 textureMatrix;varying vec4 vReflection;varying vec3 vWorld;void main(){vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;vReflection=textureMatrix*vec4(position,1.);gl_Position=projectionMatrix*viewMatrix*w;}`,
   fragmentShader:`
-   uniform float uTime,uNight,uDusk;uniform vec3 uDeep,uSkyTint,uLightDirection;uniform vec4 uShores[${shoreData.length}];uniform vec4 uHarborLights[20];varying vec3 vWorld;
+   uniform sampler2D tDiffuse;uniform vec2 uReflectionTexel;varying vec4 vReflection;
+   uniform float uTime,uNight,uDusk;uniform vec3 uDeep,uSkyTint,uLightDirection;uniform vec4 uShores[${shoreData.length}];varying vec3 vWorld;
    ${noiseGLSL}
    void main(){
     vec2 p=vWorld.xz;
@@ -49,33 +52,40 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
     color+=vec3(.16,.24,.16)*caustic*shallow*.17*(1.-uNight*.7);
     float fresnel=pow(1.-max(dot(n,view),0.),4.);
     vec3 sky=uSkyTint;
-    color=mix(color,sky,fresnel*(.48-uDusk*.24));
+    // Capture the real scene with a camera mirrored about the sea plane.
+    // Wave normals perturb that image; a small anisotropic blur softens it.
+    vec2 mirrorUv=vReflection.xy/vReflection.w;
+    vec2 distortion=vec2(slope.x+slope.y*.3,slope.y*.6)*.06;
+    distortion.x+=(noise(p*7.+uTime*.13)-.5)*.0009;
+    vec2 uv=mirrorUv+distortion;
+    float coverage=smoothstep(0.,.018,uv.x)*smoothstep(0.,.018,uv.y)*smoothstep(0.,.018,1.-uv.x)*smoothstep(0.,.018,1.-uv.y);
+    uv=clamp(uv,vec2(.003),vec2(.997));
+    vec2 blur=uReflectionTexel*vec2(2.0,.65);
+    vec3 reflected=texture2D(tDiffuse,uv).rgb*.32;
+    reflected+=(texture2D(tDiffuse,uv+vec2(blur.x,0.)).rgb+texture2D(tDiffuse,uv-vec2(blur.x,0.)).rgb)*.17;
+    reflected+=(texture2D(tDiffuse,uv+vec2(0.,blur.y)).rgb+texture2D(tDiffuse,uv-vec2(0.,blur.y)).rgb)*.17;
+    reflected*=mix(vec3(.87,.96,.97),vec3(.92,.98,1.0),uNight);
+    float reflectivity=(.24+.42*fresnel)*(1.-shallow*.23)*coverage;
+    color=mix(color,reflected,reflectivity);
     vec3 light=normalize(uLightDirection);
     float reflection=pow(max(dot(reflect(-light,n),view),0.),150.);
     vec3 reflectionColor=mix(mix(vec3(.84,.79,.53),vec3(1.,.38,.09),uDusk),vec3(.30,.47,.64),uNight);
     color+=reflectionColor*reflection*(.48+uDusk*1.1);
-    // Each dock lantern has its own mirrored position; moving ripples break
-    // the warm reflection into short streaks instead of an orange painted patch.
-    if(uNight>.025){for(int i=0;i<20;i++){
-     vec4 lamp=uHarborLights[i];
-     vec2 toward=normalize(cameraPosition.xz-lamp.xz+vec2(.0001));
-     vec2 mirror=(cameraPosition.xz*lamp.y+lamp.xz*max(cameraPosition.y,.1))/(max(cameraPosition.y,.1)+lamp.y);
-     vec2 delta=p-mirror;float across=dot(delta,vec2(-toward.y,toward.x));float along=dot(delta,toward);
-     float distortion=(noise(vec2(along*3.,float(i)+uTime*.4))-.5)*.3;
-     float streak=exp(-pow((across+distortion)/(.08+abs(along)*.045),2.))*exp(-pow(abs(along)/(.75+lamp.y*.25),1.4));
-     float broken=(.04+.96*pow(.5+.5*sin(along*22.+uTime*2.3+float(i)*1.7),8.))*(.3+.7*noise(vec2(along*4.+uTime*.4,float(i)*4.)));
-     color+=vec3(1.0,.37,.055)*streak*broken*lamp.w*.34;
-    }}
     float haze=1.-exp(-pow(length(cameraPosition-vWorld)/280.,1.7));
     color=mix(color,sky,haze*.92);
     gl_FragColor=vec4(color,1.);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
    }`
- });
+ };
+ const ocean=new Reflector(new THREE.PlaneGeometry(1400,1400),{shader,textureWidth:resolution,textureHeight:resolution,multisample:0,clipBias:.001});
+ const material=ocean.material;
+ // Reflector clones shader uniforms. Keep these three linked to the existing
+ // animation/color controls, while its projection matrix and texture stay owned.
+ Object.assign(material.uniforms,{uTime:time,uNight:night,uDeep:deep});
  // Keep the existing daylight/sunset/night color transition API.
  material.color=deep.value;
- const ocean=new THREE.Mesh(new THREE.PlaneGeometry(1400,1400),material);ocean.name='Ocean with directional wave normals';ocean.rotation.x=-Math.PI/2;ocean.position.y=.018;scene.add(ocean);
+ ocean.name='Ocean with live island reflections';ocean.rotation.x=-Math.PI/2;ocean.position.y=.018;scene.add(ocean);
  const surfMeshes=[];
  function surf({x,z,rx,rz,phase=0,beach=false,scale=1}){
   const segments=beach?256:96,rows=24,positions=[],uv=[],indices=[];
@@ -150,5 +160,12 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
  }
  const sandGeo=new THREE.BufferGeometry();sandGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));sandGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));sandGeo.setIndex(indices);sandGeo.computeVertexNormals();
  const sand=new THREE.Mesh(sandGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.93,side:THREE.DoubleSide}));sand.name='Dry sand to wet sloping beach';sand.receiveShadow=true;scene.add(sand);
- return{material,setHarborLights(lights){material.uniforms.uHarborLights.value=lights},setAtmosphere(sky){material.uniforms.uDusk.value=sky.weights.y;material.uniforms.uSkyTint.value.copy(sky.horizon);material.uniforms.uLightDirection.value.copy(sky.weights.z>.5?sky.moonDirection:sky.sunDirection)},update(t,n){time.value=t;night.value=n},surfMeshes};
+ const reflectScene=ocean.onBeforeRender;
+ ocean.onBeforeRender=function(renderer,scene,camera,...rest){
+  // Foam is a surface overlay, not a second object below the water. Hiding it
+  // during capture also avoids dark duplicate rings around the island.
+  const visibility=surfMeshes.map(o=>o.visible);surfMeshes.forEach(o=>o.visible=false);
+  try{reflectScene.call(this,renderer,scene,camera,...rest);}finally{surfMeshes.forEach((o,i)=>o.visible=visibility[i]);}
+ };
+ return{ocean,material,setAtmosphere(sky){material.uniforms.uDusk.value=sky.weights.y;material.uniforms.uSkyTint.value.copy(sky.horizon);material.uniforms.uLightDirection.value.copy(sky.weights.z>.5?sky.moonDirection:sky.sunDirection)},update(t,n){time.value=t;night.value=n},surfMeshes};
 }
