@@ -79,3 +79,10 @@ export const PORT=Object.freeze({
  umbrella:{x:-5.45,z:7.4},
 });
 export const REMOTE=Object.freeze({x:16.9,z:-4.4,rx:2.25,rz:1.95});
+
+// Southwest anchorage: the broadside reads from the island overview while the
+// complete hull and bowsprit stay clear of the beach, sea stacks and harbour.
+export const PIRATE=Object.freeze({x:-12.8,y:.015,z:18.2,scale:.96,rotation:1.72,
+ look:[-12.8,4.6,18.2],offset:[10,5.4,17],
+ bounds:[[-19.3,-.9,12.9],[-4.0,11.2,22.6]],
+});

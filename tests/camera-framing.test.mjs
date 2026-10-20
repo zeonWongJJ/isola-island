@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { fitPlaceCamera, applyViewportOffset, PLACE_BOUNDS, OVERVIEW_POINTS } from '../src/camera-framing.js';
+import { fitPlaceCamera, applyViewportOffset, PLACE_BOUNDS, OVERVIEW_POINTS, OVERVIEW_LOOK, MAX_ORBIT_DISTANCE } from '../src/camera-framing.js';
+import { PIRATE } from '../src/layout.js';
 
 const layouts=[
  {width:390,height:844,viewport:{x:14,y:160,width:286,height:530}},
@@ -10,8 +11,8 @@ const layouts=[
  {width:1440,height:900,viewport:{x:332,y:204,width:1010,height:500}},
  {width:1440,height:900,viewport:{x:22,y:92,width:1320,height:786}},
 ];
-const looks=[[-.4,10.2,-4.5],[1,8.8,-4.3],[.9,5.5,-.5],[2.5,2.7,3.8],[-5.3,4,1],[1.2,2.6,4.5],[6.4,2.3,11.8],[-4.8,1.2,7.8],[8.45,1.75,-1.9],[16.9,1.8,-4.6]];
-const offsets=[[8,5,11],[8,4,8],[7,7.5,14],[7,4,10],[-7,5,9],[3,5,10],[9,5,11],[-4,4,10],[8.4,1.65,1.5],[6,5,9]];
+const looks=[[-.4,10.2,-4.5],[1,8.8,-4.3],[.9,5.5,-.5],[2.5,2.7,3.8],[-5.3,4,1],[1.2,2.6,4.5],[6.4,2.3,11.8],[-4.8,1.2,7.8],[8.45,1.75,-1.9],[16.9,1.8,-4.6],PIRATE.look];
+const offsets=[[8,5,11],[8,4,8],[7,7.5,14],[7,4,10],[-7,5,9],[3,5,10],[9,5,11],[-4,4,10],[8.4,1.65,1.5],[6,5,9],PIRATE.offset];
 test('every destination fits the unobstructed viewport on phone, landscape and desktop',()=>{
  for(const layout of layouts)for(let i=0;i<PLACE_BOUNDS.length;i++){
   const framing=fitPlaceCamera({...layout,look:looks[i],offset:offsets[i],bounds:PLACE_BOUNDS[i]});
@@ -28,5 +29,5 @@ test('every destination fits the unobstructed viewport on phone, landscape and d
  }
 });
 test('the island overview fits without exceeding the orbit zoom range',()=>{
- for(const layout of layouts){const framing=fitPlaceCamera({...layout,look:[1,4.1,1.4],offset:[29,7,38],points:OVERVIEW_POINTS,minDistance:48});assert.ok(framing.distance<=180);}
+ for(const layout of layouts){const framing=fitPlaceCamera({...layout,look:OVERVIEW_LOOK,offset:[29,7,38],points:OVERVIEW_POINTS,minDistance:48});assert.ok(framing.distance<=MAX_ORBIT_DISTANCE);}
 });

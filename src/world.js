@@ -14,6 +14,7 @@ import { carveWalkways } from './stair-cut.js';
 import { createSeaIslets, SEA_STACKS } from './sea-islets.js';
 import { createLandscapeDetails } from './landscape-detail.js';
 import { stairBankGeometry } from './stair-banks.js';
+import { createPirateShip, createPirateRipples } from './pirate-ship.js';
 
 export function buildWorld(scene){
  const staticWorld=new THREE.Group();scene.add(staticWorld);
@@ -186,6 +187,8 @@ export function buildWorld(scene){
  const ship=add(H.ship(),shipLayout.x,shipLayout.y,shipLayout.z,shipLayout.scale,shipLayout.rotation,animated);
  const boat1=add(H.rowboat(),-.7,.22,12.35,.72,.65,animated);const boat2=add(H.rowboat(),11.25,.2,5.9,.62,-.3,animated);
  const sloop=add(H.ship(),-13.8,.12,6.2,.30,.8,animated);
+ const pirate=createPirateShip();animated.add(pirate.root);
+ const pirateRipples=createPirateRipples();scene.add(pirateRipples.mesh);
  add(H.umbrella(),PORT.umbrella.x,.55,PORT.umbrella.z,.76,.5);add(H.umbrella(),8.0,.56,5.75,.72,-.5);
  for(let i=0;i<5;i++){add(A.barrel(),landing.x+(i%2?-.24:.28),.79,8.7+i*.53,.42);if(i%2===0)add(A.crate(),quay.x+.7+i*.7,.79,quay.z,.35)}
  add(D.fishingNet(),landing.x+.52,.81,9.9,.7,Math.PI/2);add(D.fishingNet(),-5.45,.77,9.25,.65,-.24);
@@ -265,6 +268,7 @@ export function buildWorld(scene){
  const landscape=createLandscapeDetails({surfaces:groundSurfaces,cliffs:cliffSurfaces,paths:walkPaths});staticWorld.add(landscape.group);
  const nightLighting=createNightLighting(scene,[staticWorld,animated]);
  const waterSystem=createWaterSystem(scene,{seaStacks});const seaMat=waterSystem.material;
+ waterSystem.surfMeshes.push(pirateRipples.mesh);
  // Merge static geometry by material to preserve thousands of model details with a compact draw-call budget.
  staticWorld.updateMatrixWorld(true);const buckets=new Map(),glowMats=new Set();let meshes=0;
  const geometryTemplates=new Map(),coloredMaterials=new Map();
@@ -323,7 +327,7 @@ export function buildWorld(scene){
  animated.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m.userData?.glow)glowMats.add(m)});
  const shipY=ship.position.y,sloopY=sloop.position.y;
  return {walkPaths,nightLighting,setAtmosphere:waterSystem.setAtmosphere,details:meshes,waterMats,seaMat,fallMaterial,fireflies,caveLight,glowMats,update(t,night,camera){
- waterSystem.update(t,night);nightLighting.update(t,night,camera);N.update(t);D.update(t);H.update(t);fallMaterial.uniforms.time.value=t;mistNight.value=night;
+ pirate.update(t,night);pirateRipples.update(t,night);waterSystem.update(t,night);nightLighting.update(t,night,camera);N.update(t);D.update(t);H.update(t);fallMaterial.uniforms.time.value=t;mistNight.value=night;
  if(rotor)rotor.rotateZ(.003);ship.position.y=shipY+Math.sin(t*.7)*.06;ship.rotation.z=Math.sin(t*.6)*.012;sloop.position.y=sloopY+Math.sin(t*.9)*.05;boat1.position.y=.22+Math.sin(t*1.2)*.045;boat2.rotation.z=Math.sin(t*.7)*.05;
  for(const d of drops){const u=(t*.42+d.userData.phase)%1;d.position.set(d.userData.x,d.userData.top+(d.userData.bottom-d.userData.top)*u,d.userData.z0+(d.userData.z1-d.userData.z0)*u+.06)}
  ripples.forEach((r,i)=>{const u=(t*(r.userData.impact?.38:.24)+i*.24)%1;r.scale.setScalar(r.userData.impact?1+u*3.6:.65+u*.6);r.material.opacity=Math.sin(u*Math.PI)*(r.userData.impact?.20:.24)*(1-night*.38)});

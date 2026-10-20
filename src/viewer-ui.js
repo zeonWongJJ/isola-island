@@ -1,4 +1,4 @@
-export function createViewerUI({onLayoutChange,paintIcons}){
+export function createViewerUI({onLayoutChange,paintIcons,placeCount=10}){
  const body=document.body,compact=matchMedia('(max-width:700px), (max-height:560px)');
  const toggle=document.querySelector('#immersive-toggle'),drawerToggle=document.querySelector('#explore-toggle'),content=document.querySelector('#explore-content'),backdrop=document.querySelector('#explore-backdrop');
  let immersive=false,drawerOpen=false,hasSelection=false;
@@ -68,6 +68,6 @@ export function createViewerUI({onLayoutChange,paintIcons}){
  sync();
  return{get immersive(){return immersive},get compact(){return compact.matches},safeViewport,
   selectPlace(name){hasSelection=true;closeDrawer({restoreFocus:false});get('#drawer-summary').textContent=name;sync();if(compact.matches)get('#world').focus({preventScroll:true});},
-  home(){hasSelection=false;closeDrawer({restoreFocus:false});get('#drawer-summary').textContent='10 个目的地';sync();},
+  home(){hasSelection=false;closeDrawer({restoreFocus:false});get('#drawer-summary').textContent=`${placeCount} 个目的地`;sync();},
  };
 }

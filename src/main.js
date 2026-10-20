@@ -4,9 +4,9 @@ import { createIcons, Shell, Image, Sun, Sunset, MoonStar, Navigation, Plus, Min
 import { buildWorld } from './world.js';
 import { CAVE } from './cave-layout.js';
 import { createAtmosphere } from './atmosphere.js';
-import { PORT, REMOTE } from './layout.js';
+import { PORT, REMOTE, PIRATE } from './layout.js';
 import { createViewerUI } from './viewer-ui.js';
-import { fitPlaceCamera, applyViewportOffset, PLACE_BOUNDS, OVERVIEW_POINTS } from './camera-framing.js';
+import { fitPlaceCamera, applyViewportOffset, PLACE_BOUNDS, OVERVIEW_POINTS, OVERVIEW_LOOK, MAX_ORBIT_DISTANCE } from './camera-framing.js';
 import './style.css';
 import './viewer.css';
 const icons={Shell,Image,Sun,Sunset,MoonStar,Navigation,Plus,Minus,Scan,Maximize,Minimize,Play,Pause,ArrowUpRight,MapPin,Mouse,Rotate3d,X,TowerControl,Waves,House,Wheat,Store,Anchor,Umbrella,Gem,Castle,Mountain,Expand,Shrink,Map,ChevronUp};
@@ -21,16 +21,22 @@ const places=[
  {name:'帆船与港口',en:'THE HARBOUR',icon:'anchor',pos:[PORT.ship.x,5.2,PORT.ship.z],look:[6.4,2.3,11.8],offset:[9,5,11],desc:'三桅帆船停靠伸入海湾的木码头。风帆、缆绳、桅杆、船舷与甲板层次分明，小舟随海浪轻轻起伏。'},
  {name:'沙滩营地',en:'THE BEACH',icon:'umbrella',pos:[PORT.umbrella.x,2.3,PORT.umbrella.z],look:[-4.8,1.2,7.8],offset:[-4,4,10],desc:'棕榈树沿着弯曲的浅色海岸伸展，条纹阳伞与小栈桥散落沙滩。放慢一点，看浪花围着礁石荡开。'},
  {name:'神秘洞穴',en:'THE BLUE GROTTO',icon:'gem',pos:[CAVE.x+.25,3.65,CAVE.z],look:[8.45,1.75,CAVE.z],offset:[8.4,1.65,1.5],desc:'东侧崖壁中藏着一片幽蓝。岩洞里生长着发光晶体，木栈桥通向水边，星夜时更显神秘。'},
- {name:'远海遗迹',en:'THE LOST ISLET',icon:'castle',pos:[REMOTE.x,3.7,REMOTE.z-.2],look:[REMOTE.x,1.8,REMOTE.z-.2],offset:[6,5,9],desc:'主岛之外，棕榈环绕着一座古老石砌遗迹。残缺拱门、断柱、碎石与攀爬藤蔓，静静等待来访。'}
+ {name:'远海遗迹',en:'THE LOST ISLET',icon:'castle',pos:[REMOTE.x,3.7,REMOTE.z-.2],look:[REMOTE.x,1.8,REMOTE.z-.2],offset:[6,5,9],desc:'主岛之外，棕榈环绕着一座古老石砌遗迹。残缺拱门、断柱、碎石与攀爬藤蔓，静静等待来访。'},
+ {name:'黑潮海盗船',en:'THE BLACK TIDE',icon:'anchor',pos:[PIRATE.x,10.9,PIRATE.z],look:PIRATE.look,offset:PIRATE.offset,desc:'黑潮号静泊在岛外。黑帆与骷髅纹章迎着海风，绳梯通向瞭望台；绕到船尾，看看窗廊、舵轮和亮着暖灯的甲板。'}
 ];
+const placeCount=places.length;
+document.documentElement.style.setProperty('--destination-count',placeCount);
+document.querySelector('#explore-count').textContent=`${placeCount} 个目的地`;
+document.querySelector('#drawer-summary').textContent=`${placeCount} 个目的地`;
+document.querySelector('#place-number').textContent=`01 — ${placeCount}`;
 const destinations=document.querySelector('#destinations'),markersWrap=document.querySelector('#markers');
 places.forEach((p,i)=>{const button=document.createElement('button');button.className='destination';button.dataset.index=i;button.innerHTML=`<div><span class="index">${String(i+1).padStart(2,'0')}</span><i data-lucide="${p.icon}"></i></div><strong>${p.name}</strong><span class="english">${p.en}</span>`;button.addEventListener('click',()=>selectPlace(i));destinations.append(button);const m=document.createElement('button');m.className='marker';m.textContent=String(i+1).padStart(2,'0');m.setAttribute('aria-label',`查看${p.name}`);m.dataset.label=p.name;m.addEventListener('click',()=>selectPlace(i));markersWrap.append(m);p.marker=m;p.vector=new THREE.Vector3(...p.pos)});paintIcons();
 const canvas=document.querySelector('#world');let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});}catch(e){document.querySelector('#loading p').textContent='当前浏览器未启用 WebGL，请启用硬件加速后重新打开。';throw e}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xc1e3e1);scene.fog=new THREE.FogExp2(0xc1e3e1,.003);
-const camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.1,1800);const defaultLook=new THREE.Vector3(1,4.1,1.4),defaultOffset=new THREE.Vector3(29,7,38);
-const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.065;controls.minDistance=5;controls.maxDistance=180;controls.minPolarAngle=.12;controls.maxPolarAngle=Math.PI*.49;controls.target.copy(defaultLook);controls.autoRotateSpeed=.45;controls.screenSpacePanning=false;controls.zoomSpeed=.75;controls.panSpeed=.55;
+const camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.1,1800);const defaultLook=new THREE.Vector3(...OVERVIEW_LOOK),defaultOffset=new THREE.Vector3(29,7,38);
+const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.065;controls.minDistance=5;controls.maxDistance=MAX_ORBIT_DISTANCE;controls.minPolarAngle=.12;controls.maxPolarAngle=Math.PI*.49;controls.target.copy(defaultLook);controls.autoRotateSpeed=.45;controls.screenSpacePanning=false;controls.zoomSpeed=.75;controls.panSpeed=.55;
 function overviewOffset(){return defaultOffset.clone().multiplyScalar(Math.max(1,Math.pow(1.3/camera.aspect,.8))*(innerWidth<700?1.04:1))}
 camera.position.copy(defaultLook).add(overviewOffset());controls.update();
 const hemi=new THREE.HemisphereLight(0xd5f3ff,0xa1a971,2.25);scene.add(hemi);const sun=new THREE.DirectionalLight(0xfff0d4,3.6);sun.position.set(-18,33,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:100});sun.shadow.normalBias=.045;sun.shadow.bias=-.00015;sun.shadow.radius=3;scene.add(sun);const fill=new THREE.DirectionalLight(0xc2e9ef,.8);fill.position.set(15,10,-15);scene.add(fill);
@@ -39,7 +45,7 @@ let world;try{world=buildWorld(scene);}catch(error){document.querySelector('#loa
 const themes={day:{bg:0xc1e3e1,sea:0x469eab,sun:0xffefd3,sunPower:2.6,hemi:1.6,exposure:1.08,glow:.15,night:0},sunset:{bg:0xe5b69a,sea:0x7d9f9e,sun:0xffae62,sunPower:3.1,hemi:1.25,exposure:1.13,glow:1.35,night:.17},night:{bg:0x112c43,sea:0x153d5a,sun:0x8cb7ed,sunPower:.68,hemi:.34,exposure:.93,glow:2.2,night:1}};
 let currentTheme='day',night=0,labels=true,selected=-1,flight=null,auto=false,touring=false,tourTimer,toastTimer,themeTarget=themes.day;
 let cameraManaged=true,viewRect;
-const viewer=createViewerUI({onLayoutChange:()=>refreshFraming({duration:650}),paintIcons});
+const viewer=createViewerUI({onLayoutChange:()=>refreshFraming({duration:650}),paintIcons,placeCount});
 function refreshFraming({duration=650,immediate=false}={}){
  camera.aspect=innerWidth/innerHeight;viewRect=viewer.safeViewport();applyViewportOffset(camera,viewRect,innerWidth,innerHeight);
  if(!cameraManaged)return;
@@ -52,8 +58,8 @@ function setTheme(name){atmosphere.setTheme(name);currentTheme=name;themeTarget=
 function flyTo(target,position,duration=1600){controls.autoRotate=false;if(!duration||matchMedia('(prefers-reduced-motion:reduce)').matches){camera.position.copy(position);controls.target.copy(target);flight=null;controls.update();controls.autoRotate=auto;return;}flight={from:camera.position.clone(),fromTarget:controls.target.clone(),target:target.clone(),position:position.clone(),start:performance.now(),duration};}
 function updateTourButton(){document.querySelector('#tour').innerHTML=`<span><i data-lucide="${touring?'pause':'play'}"></i>${touring?'暂停环岛漫游':'开启环岛漫游'}</span><i data-lucide="arrow-up-right"></i>`;paintIcons()}
 function stopTour(){touring=false;clearTimeout(tourTimer);updateTourButton()}
-function selectPlace(i,fromTour=false){if(!fromTour)stopTour();selected=i;cameraManaged=true;const p=places[i];document.querySelectorAll('.destination').forEach((b,j)=>{b.classList.toggle('active',i===j);b.setAttribute('aria-current',i===j?'location':'false')});places.forEach((p,j)=>p.marker.classList.toggle('selected',i===j));document.querySelector('#place-kicker').textContent=p.en;document.querySelector('#place-number').textContent=`${String(i+1).padStart(2,'0')} — 10`;document.querySelector('#place-title').textContent=p.name;document.querySelector('#place-description').textContent=p.desc;viewer.selectPlace(p.name);refreshFraming({duration:1600});if(!viewer.compact)document.querySelector(`.destination[data-index="${i}"]`).scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
-function home(){stopTour();selected=-1;cameraManaged=true;document.querySelectorAll('.destination').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-current','false')});places.forEach(p=>p.marker.classList.remove('selected'));document.querySelector('#place-kicker').textContent='THE ISLAND JOURNAL';document.querySelector('#place-number').textContent='01 — 10';document.querySelector('#place-title').textContent='每一处，都值得停留。';document.querySelector('#place-description').textContent='从山顶的灯塔，到藏在崖壁里的蓝色洞穴。选一处风景，开始你的海岛漫游。';viewer.home();refreshFraming({duration:1600});}
+function selectPlace(i,fromTour=false){if(!fromTour)stopTour();selected=i;cameraManaged=true;const p=places[i];document.querySelectorAll('.destination').forEach((b,j)=>{b.classList.toggle('active',i===j);b.setAttribute('aria-current',i===j?'location':'false')});places.forEach((p,j)=>p.marker.classList.toggle('selected',i===j));document.querySelector('#place-kicker').textContent=p.en;document.querySelector('#place-number').textContent=`${String(i+1).padStart(2,'0')} — ${placeCount}`;document.querySelector('#place-title').textContent=p.name;document.querySelector('#place-description').textContent=p.desc;viewer.selectPlace(p.name);refreshFraming({duration:1600});if(!viewer.compact)document.querySelector(`.destination[data-index="${i}"]`).scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+function home(){stopTour();selected=-1;cameraManaged=true;document.querySelectorAll('.destination').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-current','false')});places.forEach(p=>p.marker.classList.remove('selected'));document.querySelector('#place-kicker').textContent='THE ISLAND JOURNAL';document.querySelector('#place-number').textContent=`01 — ${placeCount}`;document.querySelector('#place-title').textContent='每一处，都值得停留。';document.querySelector('#place-description').textContent='从山顶的灯塔，到藏在崖壁里的蓝色洞穴。选一处风景，开始你的海岛漫游。';viewer.home();refreshFraming({duration:1600});}
 function tourNext(){if(!touring)return;selectPlace((selected+1)%places.length,true);tourTimer=setTimeout(tourNext,7000)}
 document.querySelectorAll('[data-time]').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.time)));
 document.querySelector('#tour').addEventListener('click',()=>{if(touring)stopTour();else{touring=true;updateTourButton();tourNext()}});
