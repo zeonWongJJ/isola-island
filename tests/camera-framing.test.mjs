@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { fitPlaceCamera, applyViewportOffset, PLACE_BOUNDS, OVERVIEW_POINTS, OVERVIEW_LOOK, MAX_ORBIT_DISTANCE } from '../src/camera-framing.js';
-import { PIRATE } from '../src/layout.js';
+import { PIRATE, COVE } from '../src/layout.js';
 
 const layouts=[
  {width:390,height:844,viewport:{x:14,y:160,width:286,height:530}},
@@ -11,8 +11,8 @@ const layouts=[
  {width:1440,height:900,viewport:{x:332,y:204,width:1010,height:500}},
  {width:1440,height:900,viewport:{x:22,y:92,width:1320,height:786}},
 ];
-const looks=[[-.4,10.2,-4.5],[1,8.8,-4.3],[.9,5.5,-.5],[2.5,2.7,3.8],[-5.3,4,1],[1.2,2.6,4.5],[6.4,2.3,11.8],[-4.8,1.2,7.8],[8.45,1.75,-1.9],[16.9,1.8,-4.6],PIRATE.look];
-const offsets=[[8,5,11],[8,4,8],[7,7.5,14],[7,4,10],[-7,5,9],[3,5,10],[9,5,11],[-4,4,10],[8.4,1.65,1.5],[6,5,9],PIRATE.offset];
+const looks=[[-.4,10.2,-4.5],[1,8.8,-4.3],[.9,5.5,-.5],[2.5,2.7,3.8],[-5.3,4,1],[1.2,2.6,4.5],[6.4,2.3,11.8],[-4.8,1.2,7.8],[8.45,1.75,-1.9],[16.9,1.8,-4.6],PIRATE.look,COVE.look];
+const offsets=[[8,5,11],[8,4,8],[7,7.5,14],[7,4,10],[-7,5,9],[3,5,10],[9,5,11],[4,5,10],[8.4,1.65,1.5],[6,5,9],PIRATE.offset,COVE.offset];
 test('every destination fits the unobstructed viewport on phone, landscape and desktop',()=>{
  for(const layout of layouts)for(let i=0;i<PLACE_BOUNDS.length;i++){
   const framing=fitPlaceCamera({...layout,look:looks[i],offset:offsets[i],bounds:PLACE_BOUNDS[i]});

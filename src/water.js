@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { coastShape, coastShapeGLSL } from './terrain.js';
-import { REMOTE } from './layout.js';
+import { REMOTE, COVE } from './layout.js';
 
 const noiseGLSL = `
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
@@ -30,16 +30,36 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
     slope+=cos(dot(p,vec2(.21,.98))*2.83+uTime*.87)*vec2(.21,.98)*.008;
     slope+=vec2(noise(p*2.2+uTime*.09)-.5,noise(p*2.2+19.-uTime*.07)-.5)*.022;
     vec3 n=normalize(vec3(-slope.x,1.,-slope.y)),view=normalize(cameraPosition-vWorld);
-    float d=100.;
+    float d=100.,mainDistance=100.;
     for(int i=0;i<${shoreData.length};i++){
      vec4 s=uShores[i];vec2 q=(p-s.xy)/s.zw;
      float shape=i<2?coastShape(atan(q.y,q.x),i==0?.4:2.1):1.;
-     d=min(d,(length(q)/shape-1.)*min(s.z,s.w));
+     float shoreDistance=(length(q)/shape-1.)*min(s.z,s.w);
+     if(i==0)mainDistance=shoreDistance;
+     d=min(d,shoreDistance);
     }
-    float shallow=exp(-max(d,0.)*.48);
-    vec3 turquoise=mix(vec3(.09,.59,.52),vec3(.015,.13,.20),uNight);
-    turquoise=mix(turquoise,vec3(.32,.31,.25),uDusk*.38);
-    vec3 color=mix(uDeep,turquoise,shallow*.73);
+    vec2 cq=p-vec2(${COVE.x.toFixed(2)},${COVE.z.toFixed(2)});
+    float ca=atan(cq.x,cq.y);if(ca<0.)ca+=6.2831853;
+    float inner=1.+.035*sin(ca*5.+.8),outer=1.+.045*sin(ca*5.)+.022*cos(ca*9.);
+    float outerD=(length(cq/vec2(7.5,6.5))/outer-1.)*6.5;
+    float innerD=(1.-length(cq/vec2(3.2,3.35))/inner)*3.2;
+    float capD=ca<.55||ca>5.7331853?min(abs(ca-.55),abs(ca-5.7331853))*length(cq):-.5;
+    d=min(d,max(max(outerD,innerD),capD));
+    // A sandy shelf deepens gradually over several metres. More sand shows
+    // through at the waterline; absorption progressively reveals blue water.
+    float beachSide=smoothstep(-2.,4.,p.y);
+    float mainDepth=max(mainDistance,0.)/(1.+beachSide*.52);
+    float otherDepth=max(d,0.);
+    float shoreRun=min(mainDepth,otherDepth);
+    float sandBars=(noise(p*.43)-.5)*.16*smoothstep(.3,1.4,shoreRun);
+    float depth=.035+shoreRun*.18+shoreRun*shoreRun*.052+sandBars;
+    float shallow=exp(-max(depth,0.)*.52);
+    float sandThrough=exp(-max(depth,0.)*1.45);
+    vec3 sandBottom=vec3(.49,.60,.39)*( .96+noise(p*1.2)*.06);
+    vec3 coastalWater=mix(vec3(.035,.37,.40),sandBottom,sandThrough*.86);
+    coastalWater=mix(coastalWater,vec3(.34,.31,.22),uDusk*.27);
+    coastalWater=mix(coastalWater,vec3(.018,.10,.14),uNight);
+    vec3 color=mix(uDeep,coastalWater,shallow*.94);
     float cloud=noise(p*.12+vec2(uTime*.012,0.));color*=.94+cloud*.10;
     float swell=sin(dot(p,vec2(.71,.70))*.93-uTime*.72+noise(p*.24)*1.6);
     float ripple=sin(dot(p,vec2(-.48,.88))*4.8-uTime*1.3+noise(p*.85)*3.);
@@ -65,7 +85,7 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
     reflected+=(texture2D(tDiffuse,uv+vec2(blur.x,0.)).rgb+texture2D(tDiffuse,uv-vec2(blur.x,0.)).rgb)*.17;
     reflected+=(texture2D(tDiffuse,uv+vec2(0.,blur.y)).rgb+texture2D(tDiffuse,uv-vec2(0.,blur.y)).rgb)*.17;
     reflected*=mix(vec3(.87,.96,.97),vec3(.92,.98,1.0),uNight);
-    float reflectivity=(.24+.42*fresnel)*(1.-shallow*.23)*coverage;
+    float reflectivity=(.24+.42*fresnel)*(1.-sandThrough*.79)*(1.-shallow*.12)*coverage;
     color=mix(color,reflected,reflectivity);
     vec3 light=normalize(uLightDirection);
     float reflection=pow(max(dot(reflect(-light,n),view),0.),150.);
@@ -96,7 +116,7 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
    const radial=new THREE.Vector2(coastX,coastZ).normalize();
    for(let j=0;j<=rows;j++){
     const d=THREE.MathUtils.lerp(inward,outward,j/rows);
-    const beachSlope=.36*11/Math.hypot(coastX,coastZ);
+    const beachSlope=.462*11/Math.hypot(coastX,coastZ);
     const y=beach?Math.max(.035,.028-d*beachSlope)+.006:.038;
     positions.push(x+coastX+radial.x*d,y,z+coastZ+radial.y*d);uv.push(i/segments,d);
     if(i<segments&&j<rows){const k=i*(rows+1)+j;indices.push(k,k+1,k+rows+1,k+1,k+rows+2,k+rows+1)}
@@ -144,12 +164,12 @@ export function createWaterSystem(scene,{seaStacks=[]}={}){
  surf({x:REMOTE.x,z:REMOTE.z,rx:REMOTE.rx*1.1,rz:REMOTE.rz*1.1,phase:2.1,scale:.5});
  seaStacks.forEach(([x,z,s],i)=>surf({x,z,rx:s*1.05,rz:s*.94,phase:i*.71,scale:Math.min(.55,s*.4)}));
  // Replace the vertical sandy slab with an actual damp, gently sloped shoreline.
- const positions=[],colors=[],indices=[],rings=12,segments=256;
+ const positions=[],colors=[],indices=[],rings=24,segments=256;
  for(let i=0;i<=segments;i++){
   const a=i/segments*Math.PI*2,rr=coastShape(a,.4);
   for(let j=0;j<=rings;j++){
-   const r=THREE.MathUtils.lerp(.965,1.19,j/rings),d=(r-1.10)*10;
-   const y=Math.max(-.3,.028-d*.36);
+   const r=THREE.MathUtils.lerp(.965,1.55,j/rings),d=(r-1.10)*10;
+   const y=d<0?Math.min(.49,.028-d*.462):.028-d*.16-d*d*.055;
    positions.push(Math.cos(a)*11.2*rr*r,y,1+Math.sin(a)*9.1*rr*r);
    const wet=THREE.MathUtils.smoothstep(r,1.035,1.14),c=new THREE.Color(0xeed8a0).lerp(new THREE.Color(0xaaa67b),wet*.65);
    const grain=(Math.sin(a*127.+j*2.7)*.5+.5)*.018;

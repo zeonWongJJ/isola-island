@@ -24,7 +24,7 @@ export function terraceSurfacePoint({cx,cz,rx,rz,top,bottom,phase},a,t){
  const j=t*7,shift=Math.sin(a*11+j*1.7+phase)*.012*Math.sin(t*Math.PI),angle=a+shift;
  const erosion=(.035*Math.sin(a*7+j*1.1+phase)+.022*Math.sin(a*19-j*.7))*Math.sin(t*Math.PI);
  const radius=terraceShape({top,phase},a)*(1+.055*(1-t)+erosion);
- return[cx+Math.cos(angle)*rx*radius,bottom+(top-bottom)*t+Math.sin(a*6+j*1.8+phase)*.11*Math.sin(t*Math.PI)+.065*Math.sin(a*19+phase)*t,cz+Math.sin(angle)*rz*radius];
+ return[cx+Math.cos(angle)*rx*radius,bottom+(top-bottom)*t+Math.sin(a*6+j*1.8+phase)*.11*Math.sin(t*Math.PI)+(top===.48?0:.065*Math.sin(a*19+phase)*t),cz+Math.sin(angle)*rz*radius];
 }
 
 export function terraceGeometry(cx,cz,rx,rz,top,bottom,color,phase){

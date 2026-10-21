@@ -86,3 +86,8 @@ export const PIRATE=Object.freeze({x:-12.8,y:.015,z:18.2,scale:.96,rotation:1.72
  look:[-12.8,4.6,18.2],offset:[10,5.4,17],
  bounds:[[-19.3,-.9,12.9],[-4.0,11.2,22.6]],
 });
+
+// Northwest companion island; the channel remains separate from the main shore.
+export const COVE=Object.freeze({x:-24,z:-11,
+ look:[-24,2.4,-11.8],offset:[7,10,17],
+ bounds:[[-32.4,-.8,-18.7],[-15.7,7.4,-4.7]]});

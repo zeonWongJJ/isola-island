@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { PIRATE } from './layout.js';
-export const OVERVIEW_LOOK=[-2,4.1,4.5];
-export const MAX_ORBIT_DISTANCE=260;
+import { PIRATE, COVE } from './layout.js';
+export const OVERVIEW_LOOK=[-7,3.8,1.2];
+export const MAX_ORBIT_DISTANCE=300;
 
 export const PLACE_BOUNDS=[
  [[-2.85,4.9,-6.4],[1.0,13.65,-.3]],
@@ -14,10 +14,10 @@ export const PLACE_BOUNDS=[
  [[-7.4,.05,6.25],[-2.8,3.6,10.65]],
  [[7.35,.4,-3.6],[9.25,3.65,-.2]],
  [[15.15,.35,-6.3],[18.7,4.75,-2.4]],
- PIRATE.bounds,
+ PIRATE.bounds, COVE.bounds,
 ];
 export const OVERVIEW_POINTS=[[-11,.4,0],[-8,.4,8],[0,.4,10],[8,.4,7],[9,4,-4],[0,8.4,-7.8],[-7,4.7,-5],[-.4,13.7,-5.1],[8.8,.2,15.9],[10.5,5.1,13.3],[19,1,-4.4],[15.5,4.8,-4.8],
- [-18.3,.3,20],[-4.7,3.6,15.7],[-12.8,11,18.2],[-12.8,.2,22.1]];
+ [-18.3,.3,20],[-4.7,3.6,15.7],[-12.8,11,18.2],[-12.8,.2,22.1],[-32.3,1,-11],[-27.6,7.2,-16.3],[-24,1,-18],[-16.4,1,-11],[-24,.1,-4.7]];
 
 export function fitPlaceCamera({look,offset,bounds,points,viewport,width,height,fov=37,minDistance=5,padding=1.10}){
  const target=new THREE.Vector3(...look),backward=new THREE.Vector3(...offset).normalize();
